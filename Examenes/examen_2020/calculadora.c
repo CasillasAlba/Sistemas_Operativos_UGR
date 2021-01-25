@@ -35,23 +35,22 @@ struct datos{
 	long int operando_a;
 	long int operando_b;
 	char op;
-	pid_t pid_cli;
+	int num_cliente;
 };
 
 int main(){
-	int fdbloqueo, fdtxt; //Para la exclusion mutua del ejercicio 3 e historico datos
+	int fdbloqueo; //Para la exclusion mutua del ejercicio 3
 	struct datos data;
 	// IMPORTANTE QUE SEA LONG INT PORQUE SI NO PRODUCE DESBORDAMIENTO
 	long int resultado;
-	int tamanio = 3;
-	//pid_t *hijos = malloc(tamanio*sizeof(pid_t));
-	pid_t hijos[tamanio];
 	int dfifoe, dfifos;
+	// Variables para historico de datos
+	int fdtxt;
 	// Como vamos a concatenar las operaciones de los clientes, 
 	// malloc devuelve un puntero con tamanio char, lo multiplicaremos
 	// *1000 para que tenga espacio de sobra para almacenar todas las
 	// operaciones. De esta forma, no se accedera a espacio reservado
-	char *bufferHistorico = malloc(sizeof(char*)*2000);
+	char *bufferHistorico = malloc(sizeof(char*)*1000);
 	
 
 
@@ -89,17 +88,10 @@ int main(){
 		exit(1);
 	}
 
-	int estado;
-    pid_t espera_pid;
-    char * valor;
-	
- 	// Leemos lo que vayan pasandole los hijos
- 	int contador = 0;
-	while (read(dfifoe, &data, sizeof(data)) > 0){
-		hijos[contador] = data.pid_cli;
-		printf("CLIENTE %d , OPERACION: %ld%c%ld\n", data.pid_cli,data.operando_a, data.op, data.operando_b);
-		printf("PID %d , CLIENTE %d ", data.pid_cli, hijos[contador]);
 
+ 	// Leemos lo que vayan pasandole los hijos
+	while (read(dfifoe, &data, sizeof(data)) > 0){
+		printf("CLIENTE %d , OPERACION: %ld%c%ld\n", data.num_cliente,data.operando_a, data.op, data.operando_b);
 		if(data.op == '+' ){
 			resultado = data.operando_a + data.operando_b;
 		}else if(data.op == '*'){
@@ -108,28 +100,14 @@ int main(){
 
 		printf("El resultado de la operacion es: %ld\n", resultado);
 		// Guardo la operacion en un char* para almacenar la informacion en historico.txt!!
-		sprintf(bufferHistorico, "%s\n%ld%c%ld=%ld", bufferHistorico, data.operando_a, data.op, data.operando_b, resultado);
-
+		sprintf(bufferHistorico, "%s\n %ld%c%ld=%ld", bufferHistorico, data.operando_a, data.op, data.operando_b, resultado);
 		
 		// Se escribe de vuelta para que el cliente lo escriba
-		if(write(dfifos, &resultado, sizeof(long int)) < 0){
+		if(write(dfifos, &resultado, sizeof(int)) < 0){
 			perror("Error al escribir en el write");
 		}
 
-		contador++;
-		//tamanio++;
-		//hijos = realloc(hijos,tamanio);
-		//scanf("%c", &valor);
-
     }
-    
-    
-    for(int i = 0; i < tamanio; i++){
-    	espera_pid = waitpid(hijos[i], &estado, 0);
-		printf("Calculadora: Acaba de finalizar mi hijo %i\n", espera_pid);
-    }
-    
-    
 
 	//Una vez que se resuelva las operaciones, guardarla en el historico de archivos (EJERCICIO3)
 	

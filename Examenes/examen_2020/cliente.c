@@ -59,7 +59,7 @@ struct datos{
 	long int operando_a;
 	long int operando_b;
 	char op;
-	pid_t pid_cli;
+	int num_cliente;
 };
 
 
@@ -88,8 +88,7 @@ int main(int argc, char * argv[]){
 	int num_clientes = atoi(argv[1]); 
 	struct datos data;
 	struct stat st;
-	pid_t pid;
-	pid_t hijos[num_clientes];
+	pid_t pid, pid_proceso;
 	int fd;
 	DIR * directorio;
 	struct dirent * entrada;
@@ -135,17 +134,17 @@ int main(int argc, char * argv[]){
         }
     }
 
-
 	for(int i= 0; i < num_clientes; i++){
 	    if((pid = fork()) < 0){
 	        perror("Error en el fork");
 	        exit(1);
 	    }else if(pid == 0){ // CLIENTE
-	    	generaOperacion(&data.op, getpid());
+	    	pid_proceso = getpid();
+	    	generaOperacion(&data.op, pid_proceso);
 
-	    	data.pid_cli = getpid();
+	    	data.num_cliente = i;
 
-			printf("Cliente(pid) %d genera operacion: %ld%c%ld\n", data.pid_cli, data.operando_a, data.op, data.operando_b);
+			printf("Cliente %d genera operacion: %ld%c%ld\n", i, data.operando_a, data.op, data.operando_b);
 
 			// Abrimos el fifo de entrada para escribir en el struct
 			if ((dfifoe = open("MIFIFO_E", O_WRONLY)) < 0){
@@ -165,16 +164,14 @@ int main(int argc, char * argv[]){
 			}
 
 			// Recogemos la respuesta de calculadora.c
-			if(read(dfifos,&resultado,sizeof(long int)) < 0){
+			if(read(dfifos,&resultado,sizeof(int)) < 0){
 				perror("Error al leer del cauce");
 				exit(1);
 			}
 
-			printf("El resultado del cliente %d es: %ld\n", data.pid_cli, resultado);
+			printf("El resultado del cliente %d es: %ld\n", i, resultado);
 
 			exit(0); //PARA QUE LOS HIJOS DEL PROCESO NO CREEN HIJOS -- EVITAMOS BOMBA DE FORK!!!
-		}else{
-			hijos[i] = pid;
 		}
  
     }
@@ -183,18 +180,9 @@ int main(int argc, char * argv[]){
     closedir(directorio);
 
 	//Esperamos a que todos los clientes terminen
-    int estado;
-    pid_t espera_pid;
-	for(int i = 0; i < num_clientes; i++){
-    	espera_pid = waitpid(hijos[i], &estado, 0);
-		printf("Cliente: Espera del hijo %i\n", espera_pid);
-    }
-
-	/*
 	int estado;
 	while(wait(&estado) != -1);
 	exit(0);
-	*/
 
 }
 
